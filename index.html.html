@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دفتر الحضور والمرتبات</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#16302B;
+    --ink-2:#20463d;
+    --paper:#F5F3EE;
+    --card:#FFFFFF;
+    --line:#E4E0D4;
+    --line-2:#EFECE1;
+    --muted:#7A7666;
+    --gold:#C9A227;
+    --gold-2:#DBB53A;
+    --good:#0F7A4A;
+    --bad:#B91C1C;
+    --wfh:#2563EB;
+    --mission:#B45309;
+    --leave:#0891B2;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:#1C1C1A;
+    font-family:'Tahoma','Segoe UI',Arial,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  table{border-collapse:collapse;width:100%;}
+  input,select,button{font-family:inherit;font-size:13px;}
+  .mono{font-family:'Consolas','Courier New',monospace;}
+
+  header.topbar{
+    background:var(--ink);
+    color:#fff;
+    padding:16px 22px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  header.topbar h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.2px;}
+  header.topbar p{margin:3px 0 0;font-size:12.5px;color:#9CC3B5;}
+  .topbar-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .month-picker{
+    display:flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,.1);
+    border-radius:6px;padding:6px 10px;
+  }
+  .month-picker select{
+    background:transparent;color:#fff;border:none;outline:none;cursor:pointer;font-weight:600;
+  }
+  .month-picker select option{color:#111;}
+  .btn{
+    border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:12.5px;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn-gold{background:var(--gold);color:var(--ink);}
+  .btn-gold:hover{background:var(--gold-2);}
+  .btn-outline{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-outline:hover{background:#FAFAF7;}
+  .btn-dark{background:var(--ink);color:#fff;}
+  .btn-dark:hover{background:var(--ink-2);}
+  .btn-danger{background:transparent;color:var(--bad);border:1px solid #F1D3D3;}
+  .btn-danger:hover{background:#FDECEC;}
+  .btn-sm{padding:5px 9px;font-size:11.5px;}
+
+  .layout{
+    max-width:1400px;margin:0 auto;padding:18px;
+    display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;
+  }
+  aside.sidebar{
+    width:270px;flex-shrink:0;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  }
+  .sidebar-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700;color:var(--ink);
+  }
+  .emp-list{list-style:none;margin:0;padding:0;max-height:520px;overflow:auto;}
+  .emp-item{
+    padding:10px 14px;border-bottom:1px solid var(--line-2);cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .emp-item:hover{background:#FAFAF7;}
+  .emp-item.active{background:#EFF6F3;}
+  .emp-name{font-weight:700;color:#3a3a36;}
+  .emp-item.active .emp-name{color:var(--ink);}
+  .emp-sub{font-size:11px;color:var(--muted);}
+  .emp-del{background:none;border:none;color:#c9c4b4;cursor:pointer;font-size:13px;padding:2px 4px;}
+  .emp-del:hover{color:var(--bad);}
+  .sidebar-foot{
+    width:100%;text-align:center;padding:11px;font-weight:700;font-size:12.5px;
+    border-top:1px solid var(--line);background:none;cursor:pointer;color:var(--ink);
+  }
+  .sidebar-foot.active{background:var(--ink);color:#fff;}
+  .sidebar-foot:hover{background:#EFF6F3;}
+  .sidebar-foot.active:hover{background:var(--ink-2);}
+
+  main.content{flex:1;min-width:320px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;}
+  .card h2{margin:0 0 3px;font-size:17px;color:var(--ink);}
+  .card .subtitle{margin:0 0 14px;font-size:12.5px;color:var(--muted);}
+
+  .stat-row{display:flex;flex-wrap:wrap;gap:10px;}
+  .stat{
+    background:#FAFAF7;border:1px solid var(--line-2);border-radius:7px;
+    padding:9px 12px;min-width:100px;
+  }
+  .stat .label{font-size:10.5px;color:var(--muted);margin-bottom:3px;}
+  .stat .value{font-size:16px;font-weight:700;color:var(--ink);}
+  .stat .sub{font-size:9.5px;color:#a9a495;margin-top:2px;}
+
+  table.log th{
+    background:var(--ink);color:#fff;font-size:11.5px;font-weight:700;
+    padding:9px 10px;text-align:right;white-space:nowrap;
+  }
+  table.log td{padding:7px 10px;border-top:1px solid var(--line-2);font-size:13px;}
+  table.log tr:hover td{background:#FAFAF7;}
+  table.log tr.weekend td{color:#b3ada0;font-style:italic;background:#FAFAF7;}
+  select.type-select{border:1px solid var(--line);border-radius:5px;padding:4px 6px;font-weight:700;cursor:pointer;}
+  input.time-in{border:1px solid var(--line);border-radius:5px;padding:3px 5px;width:100px;}
+  .hint{color:#a9a495;font-size:11px;}
+
+  table.report th{background:var(--ink);color:#fff;font-size:11px;font-weight:700;padding:9px 8px;white-space:nowrap;text-align:center;}
+  table.report th:first-child{text-align:right;}
+  table.report td{padding:7px 8px;border-top:1px solid var(--line-2);text-align:center;font-size:12.5px;}
+  table.report td:first-child{text-align:right;font-weight:700;color:var(--ink);}
+  table.report tr:hover td{background:#FAFAF7;}
+
+  .status-tag{font-weight:800;padding:2px 8px;border-radius:20px;font-size:11.5px;}
+  .status-good{color:var(--good);background:#E7F5EE;}
+  .status-bad{color:var(--bad);background:#FBEAEA;}
+  .status-eq{color:#6B7280;background:#F0F0EE;}
+
+  .info-box{
+    background:#EFF6F3;border:1px solid #BFE0D2;border-radius:8px;
+    padding:12px 14px;font-size:12.5px;color:var(--ink);display:flex;gap:10px;
+  }
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;
+    align-items:center;justify-content:center;z-index:50;padding:16px;
+  }
+  .modal{background:#fff;border-radius:10px;padding:20px;width:100%;max-width:380px;}
+  .modal h3{margin:0 0 14px;color:var(--ink);}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:11.5px;font-weight:700;color:#666;margin-bottom:4px;}
+  .field input[type=text],.field input[type=number],.field input[type=date]{
+    width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 9px;outline:none;
+  }
+  .field input:focus{border-color:var(--ink);}
+  .weekday-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{
+    font-size:11px;background:#FAFAF7;border:1px solid var(--line);border-radius:6px;
+    padding:4px 8px;cursor:pointer;user-select:none;
+  }
+  .chip input{margin-left:4px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:8px 18px;border-radius:20px;font-size:12.5px;
+    font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;z-index:60;
+  }
+  .toast.show{opacity:1;}
+  .popover{position:relative;display:inline-block;}
+  .popover-panel{
+    position:absolute;left:0;top:calc(100% + 6px);width:290px;background:#fff;
+    border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);
+    padding:14px;z-index:30;
+  }
+  .settings-btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 12px;font-weight:700;color:var(--ink);cursor:pointer;font-size:12.5px;}
+  .settings-btn:hover{background:#FAFAF7;}
+  .chart-wrap{margin-top:14px;height:280px;}
+  .table-wrap{overflow-x:auto;}
+  @media (max-width:760px){
+    aside.sidebar{width:100%;}
+    .layout{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <h1>دفتر الحضور والمرتبات</h1>
+    <p>تسجيل الحضور اليومي، حساب الأيام الفعلية، وتحديد المستحقات — تلقائي بالكامل</p>
+  </div>
+  <div class="topbar-controls">
+    <div class="month-picker">
+      <span style="color:#9CC3B5;font-size:12px;">🗓</span>
+      <select id="monthSelect"></select>
+      <select id="yearSelect"></select>
+    </div>
+    <button class="btn btn-outline" style="background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25);" id="holidayBtn">تسجيل عطلة رسمية للكل</button>
+    <label class="btn btn-outline" style="background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25);cursor:pointer;">
+      استيراد ملف البصمة
+      <input type="file" id="importFingerprintFile" accept=".xlsx,.xls" style="display:none;">
+    </label>
+    <button class="btn btn-gold" id="csvBtn">تصدير CSV</button>
+    <button class="btn btn-outline" style="background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25);" id="backupBtn">نسخة احتياطية</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <span>الموظفين</span>
+      <button class="btn btn-dark btn-sm" id="addEmpBtn">+ إضافة</button>
+    </div>
+    <ul class="emp-list" id="empList"></ul>
+    <button class="sidebar-foot" id="summaryTabBtn">ملخص الشهر والمرتبات ←</button>
+  </aside>
+
+  <main class="content" id="mainContent"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ============================================================
+   ثوابت وأدوات مساعدة
+   ============================================================ */
+const DAY_TYPES = [
+  { key:'present', label:'حضور مكتب', color:'#1F5F4A' },
+  { key:'wfh',      label:'عمل من المنزل', color:'#2563EB' },
+  { key:'mission',  label:'مأمورية',       color:'#B45309' },
+  { key:'holiday',  label:'عطلة رسمية',    color:'#7C3AED' },
+  { key:'leave',    label:'إجازة معتمدة',  color:'#0891B2' },
+  { key:'sick',     label:'إجازة مرضية',   color:'#0D9488' },
+  { key:'absent',   label:'غياب',          color:'#B91C1C' },
+];
+const TYPE_MAP = Object.fromEntries(DAY_TYPES.map(t=>[t.key,t]));
+const WEEKDAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const MONTH_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+const pad2 = n => String(n).padStart(2,'0');
+const dateStr = (y,m,d) => `${y}-${pad2(m)}-${pad2(d)}`;
+const daysInMonth = (y,m) => new Date(y,m,0).getDate();
+const weekdayOf = (y,m,d) => new Date(y,m-1,d).getDay();
+const attKey = (empId,ds) => `${empId}::${ds}`;
+
+function timeToDec(t){
+  if(!t) return null;
+  const [h,m] = t.split(':').map(Number);
+  if(Number.isNaN(h)||Number.isNaN(m)) return null;
+  return h+m/60;
+}
+function hoursOfDay(rec){
+  if(!rec) return 8;
+  const type = rec.type || 'present';
+  if(type==='absent') return 0;
+  if(['mission','holiday','leave','sick'].includes(type)) return 0;
+  if(type==='wfh') return (rec.hours!=null && rec.hours!=='') ? Number(rec.hours) : 8;
+  const inD = timeToDec(rec.checkIn), outD = timeToDec(rec.checkOut);
+  if(inD!=null && outD!=null && outD>inD) return +(outD-inD).toFixed(2);
+  return 8;
+}
+function fmt(n,d=1){
+  if(n==null||Number.isNaN(n)) return '-';
+  return n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:d});
+}
+function fmtMoney(n){
+  if(n==null||Number.isNaN(n)) return '-';
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+/* ============================================================
+   بيانات افتراضية — نفس بيانات أغسطس 2026 اللي اشتغلنا عليها
+   ============================================================ */
+const DEFAULT_EMPLOYEES = [
+  { id:'mohab',   name:'Mohab',   salary:10000, offDays:[5],   joinDate:'' },
+  { id:'ibrahim', name:'ibrahim', salary:11000, offDays:[5],   joinDate:'' },
+  { id:'menna',   name:'Menna',   salary:7000,  offDays:[5,6], joinDate:'' },
+  { id:'omar',    name:'Omar',    salary:10000, offDays:[5],   joinDate:'' },
+  { id:'alaa',    name:'Alaa',    salary:10000, offDays:[5],   joinDate:'' },
+  { id:'zizo',    name:'Zizo',    salary:10000, offDays:[5,6], joinDate:'' },
+  { id:'mostafa', name:'Mostafa', salary:10000, offDays:[5,6], joinDate:'2026-08-04' },
+];
+const SEED_ATTENDANCE = {
+  mohab:{ '2026-08-19':{type:'mission'}, '2026-08-27':{type:'holiday'} },
+  ibrahim:{
+    '2026-08-01':{type:'wfh'},'2026-08-08':{type:'wfh'},'2026-08-10':{type:'mission'},
+    '2026-08-11':{type:'mission'},'2026-08-12':{type:'mission'},'2026-08-13':{type:'leave'},
+    '2026-08-15':{type:'wfh'},'2026-08-22':{type:'wfh'},'2026-08-27':{type:'holiday'},'2026-08-29':{type:'wfh'},
+  },
+  menna:{
+    '2026-08-06':{type:'wfh'},'2026-08-10':{type:'mission'},'2026-08-11':{type:'mission'},
+    '2026-08-12':{type:'mission'},'2026-08-13':{type:'leave'},'2026-08-20':{type:'wfh'},'2026-08-27':{type:'holiday'},
+  },
+  omar:{
+    '2026-08-08':{type:'leave'},'2026-08-10':{type:'mission'},'2026-08-11':{type:'mission'},
+    '2026-08-12':{type:'mission'},'2026-08-13':{type:'leave'},'2026-08-15':{type:'wfh'},
+    '2026-08-22':{type:'wfh'},'2026-08-27':{type:'holiday'},'2026-08-29':{type:'wfh'},
+  },
+  alaa:{ '2026-08-27':{type:'holiday'} },
+  zizo:{ '2026-08-10':{type:'leave'}, '2026-08-18':{type:'mission'}, '2026-08-27':{type:'holiday'} },
+  mostafa:{ '2026-08-27':{type:'holiday'} },
+};
+function buildSeedAttendance(){
+  const out = {};
+  for(const empId of Object.keys(SEED_ATTENDANCE)){
+    for(const [ds,rec] of Object.entries(SEED_ATTENDANCE[empId])){
+      out[attKey(empId,ds)] = rec;
+    }
+  }
+  return out;
+}
+
+/* ============================================================
+   حساب الملخص — نفس فورمولا الإكسل اللي اتفقنا عليها بالظبط:
+   الأيام الفعلية = الأيام المطلوبة − الغياب + (المأمورية × 0.5)
+   ============================================================ */
+function computeSummary(emp, attendance, year, month){
+  const total = daysInMonth(year,month);
+  const join = emp.joinDate ? new Date(emp.joinDate) : null;
+  const counts = {present:0,wfh:0,mission:0,holiday:0,leave:0,sick:0,absent:0};
+  let requiredDays = 0, hoursSum = 0;
+
+  for(let d=1; d<=total; d++){
+    const cur = new Date(year, month-1, d);
+    if(join && cur < join) continue;
+    const wd = weekdayOf(year,month,d);
+    const ds = dateStr(year,month,d);
+    const rec = attendance[attKey(emp.id,ds)];
+    const isDefaultOff = emp.offDays.includes(wd);
+    // يوم إجازة أسبوعية بلا أي تسجيل استثنائي -> مش من ضمن الأيام المطلوبة
+    if(isDefaultOff && !rec) continue;
+    requiredDays++;
+    const type = (rec && rec.type) || 'present';
+    counts[type] = (counts[type]||0) + 1;
+    hoursSum += hoursOfDay(rec || {type:'present'});
+  }
+
+  const missionRaw = counts.mission||0;
+  const absentDays = counts.absent||0;
+  const actualDays = requiredDays - absentDays + 0.5*missionRaw;
+  const expectedHours = actualDays*8;
+  const actualHours = +hoursSum.toFixed(2);
+  const varHours = +(actualHours-expectedHours).toFixed(2);
+  const dailyRate = requiredDays>0 ? emp.salary/requiredDays : 0;
+  const dueSalary = dailyRate*actualDays;
+  const diff = +(dueSalary-emp.salary).toFixed(2);
+  const status = diff>0.005 ? 'له' : (diff<-0.005 ? 'عليه' : 'متساوي');
+  return {...counts, requiredDays, actualDays, expectedHours, actualHours, varHours, dailyRate, dueSalary, diff, status};
+}
+
+/* ============================================================
+   الحالة (State) والتحميل / الحفظ
+   ============================================================ */
+let state = {
+  employees: DEFAULT_EMPLOYEES,
+  attendance: {},
+  year: 2026,
+  month: 8,
+  selectedId: 'ibrahim',
+  view: 'log', // 'log' | 'summary'
+  loaded: false,
+};
+let saveTimer = null;
+let barChart = null;
+
+async function loadState(){
+  let emps=null, att=null;
+  try{ const r = await window.storage.get('employees', false); if(r&&r.value) emps = JSON.parse(r.value); }catch(e){}
+  try{ const r = await window.storage.get('attendance', false); if(r&&r.value) att = JSON.parse(r.value); }catch(e){}
+  state.employees = (emps && emps.length) ? emps : DEFAULT_EMPLOYEES;
+  state.attendance = att || buildSeedAttendance();
+  state.selectedId = state.employees[0]?.id || null;
+  state.loaded = true;
+  if(!emps || !att){ await persist(true); }
+  render();
+}
+function queueSave(){
+  if(!state.loaded) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>persist(false), 450);
+}
+async function persist(silent){
+  try{
+    await window.storage.set('employees', JSON.stringify(state.employees), false);
+    await window.storage.set('attendance', JSON.stringify(state.attendance), false);
+    if(!silent) showToast('تم الحفظ ✓');
+  }catch(e){
+    if(!silent) showToast('تعذّر الحفظ');
+  }
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=>t.classList.remove('show'), 1400);
+}
+
+/* ============================================================
+   Render: Header selects
+   ============================================================ */
+function renderTopControls(){
+  const ms = document.getElementById('monthSelect');
+  const ys = document.getElementById('yearSelect');
+  ms.innerHTML = MONTH_AR.map((n,i)=>`<option value="${i+1}" ${i+1===state.month?'selected':''}>${n}</option>`).join('');
+  ys.innerHTML = [2024,2025,2026,2027,2028].map(y=>`<option value="${y}" ${y===state.year?'selected':''}>${y}</option>`).join('');
+  ms.onchange = e=>{ state.month = Number(e.target.value); render(); };
+  ys.onchange = e=>{ state.year = Number(e.target.value); render(); };
+}
+
+/* ============================================================
+   Render: Sidebar
+   ============================================================ */
+function renderSidebar(){
+  const list = document.getElementById('empList');
+  list.innerHTML = state.employees.map(emp=>{
+    const s = computeSummary(emp, state.attendance, state.year, state.month);
+    const active = emp.id===state.selectedId && state.view==='log';
+    return `
+      <li class="emp-item ${active?'active':''}" data-emp="${emp.id}">
+        <div>
+          <div class="emp-name">${escapeHtml(emp.name)}</div>
+          <div class="emp-sub mono">${fmt(s.actualDays)} / ${s.requiredDays} يوم</div>
+        </div>
+        <button class="emp-del" data-del="${emp.id}" title="حذف">✕</button>
+      </li>`;
+  }).join('');
+
+  list.querySelectorAll('.emp-item').forEach(li=>{
+    li.addEventListener('click', (e)=>{
+      if(e.target.closest('.emp-del')) return;
+      state.selectedId = li.dataset.emp;
+      state.view = 'log';
+      render();
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.del;
+      const emp = state.employees.find(x=>x.id===id);
+      if(!confirm(`متأكد إنك عايز تحذف "${emp.name}"؟ هيتشال معاه كل سجلات الحضور بتاعته.`)) return;
+      state.employees = state.employees.filter(x=>x.id!==id);
+      Object.keys(state.attendance).forEach(k=>{ if(k.startsWith(id+'::')) delete state.attendance[k]; });
+      if(state.selectedId===id) state.selectedId = state.employees[0]?.id || null;
+      queueSave();
+      render();
+    });
+  });
+
+  const sBtn = document.getElementById('summaryTabBtn');
+  sBtn.classList.toggle('active', state.view==='summary');
+  sBtn.onclick = ()=>{ state.view='summary'; render(); };
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   Render: Main — Employee daily log
+   ============================================================ */
+function renderEmployeeLog(){
+  const emp = state.employees.find(e=>e.id===state.selectedId);
+  const main = document.getElementById('mainContent');
+  if(!emp){ main.innerHTML = '<div class="card">من فضلك أضف موظف من الزر بالأعلى.</div>'; return; }
+
+  const s = computeSummary(emp, state.attendance, state.year, state.month);
+  const total = daysInMonth(state.year, state.month);
+  const join = emp.joinDate ? new Date(emp.joinDate) : null;
+  const statusColor = s.status==='له' ? 'var(--good)' : (s.status==='عليه' ? 'var(--bad)' : '#6B7280');
+
+  let rows = '';
+  for(let d=1; d<=total; d++){
+    const cur = new Date(state.year, state.month-1, d);
+    const ds = dateStr(state.year, state.month, d);
+    const wd = weekdayOf(state.year, state.month, d);
+    const notJoined = join && cur < join;
+    const overrideRec = state.attendance[attKey(emp.id,ds)];
+    const isDefaultOff = emp.offDays.includes(wd);
+
+    if(notJoined){
+      rows += `<tr class="weekend"><td>${d}</td><td>${WEEKDAY_AR[wd]}</td><td colspan="3">قبل تاريخ الالتحاق</td></tr>`;
+      continue;
+    }
+    if(isDefaultOff && !overrideRec){
+      rows += `<tr class="weekend" data-day="${d}"><td>${d}</td><td>${WEEKDAY_AR[wd]}</td><td colspan="2">إجازة أسبوعية</td>
+        <td style="text-align:center;"><button class="btn btn-outline btn-sm" data-work-anyway="${ds}">تسجيل حضور استثنائي</button></td></tr>`;
+      continue;
+    }
+    const rec = overrideRec || {type:'present'};
+    const type = rec.type || 'present';
+    const hrs = hoursOfDay(rec);
+    const showHours = !['absent','mission','holiday','leave','sick'].includes(type);
+    const revertBtn = isDefaultOff
+      ? `<button class="btn btn-outline btn-sm" data-revert-weekend="${ds}" title="رجّع اليوم ده إجازة أسبوعية عادية" style="margin-inline-start:6px;">↩ إجازة أسبوعية</button>`
+      : '';
+
+    let detail = '';
+    if(type==='present'){
+      detail = `<input type="time" class="time-in" data-field="checkIn" data-ds="${ds}" value="${rec.checkIn||''}">
+                 <span class="hint">→</span>
+                 <input type="time" class="time-in" data-field="checkOut" data-ds="${ds}" value="${rec.checkOut||''}">
+                 <span class="hint">(فاضي = 8 س افتراضي)</span>`;
+    } else if(type==='wfh'){
+      detail = `<input type="number" step="0.5" min="0" max="12" placeholder="8" style="width:60px" class="time-in" data-field="hours" data-ds="${ds}" value="${rec.hours??''}">
+                 <span class="hint">ساعة (افتراضي 8)</span>`;
+    } else {
+      const note = type==='mission' ? 'يُحتسب 1.5 يوم تلقائيًا' : (type==='absent' ? 'يُخصم من الأيام المستحقة' : 'يوم مدفوع بالكامل، بدون خصم');
+      detail = `<span class="hint">${note}</span>`;
+    }
+
+    rows += `<tr data-day="${d}">
+      <td class="mono">${ds}</td>
+      <td>${WEEKDAY_AR[wd]}</td>
+      <td>
+        <select class="type-select" data-ds="${ds}" style="color:${TYPE_MAP[type].color}">
+          ${DAY_TYPES.map(t=>`<option value="${t.key}" ${t.key===type?'selected':''}>${t.label}</option>`).join('')}
+        </select>${revertBtn}
+      </td>
+      <td>${detail}</td>
+      <td class="mono" style="text-align:center;font-weight:700;color:${TYPE_MAP[type].color}">${showHours ? fmt(hrs,2)+'h' : '—'}</td>
+    </tr>`;
+  }
+
+  const main2 = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <div>
+          <h2>${escapeHtml(emp.name)}</h2>
+          <p class="subtitle">${MONTH_AR[state.month-1]} ${state.year}</p>
+        </div>
+        <div class="popover">
+          <button class="settings-btn" id="empSettingsBtn">إعدادات الموظف ▾</button>
+          <div class="popover-panel" id="empSettingsPanel" style="display:none;">
+            <div class="field">
+              <label>المرتب الأساسي الشهري</label>
+              <input type="number" id="editSalary" value="${emp.salary}">
+            </div>
+            <div class="field">
+              <label>أيام الإجازة الأسبوعية</label>
+              <div class="weekday-chips">
+                ${WEEKDAY_AR.map((n,i)=>`
+                  <label class="chip"><input type="checkbox" data-wd="${i}" ${emp.offDays.includes(i)?'checked':''}>${n}</label>
+                `).join('')}
+              </div>
+            </div>
+            <div class="field">
+              <label>تاريخ الالتحاق (اختياري)</label>
+              <input type="date" id="editJoin" value="${emp.joinDate||''}">
+              <div class="hint" style="margin-top:4px;">سيبها فاضية لو شغال طول الشهر</div>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-dark btn-sm" id="saveEmpSettings">حفظ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="label">أيام مطلوبة</div><div class="value">${s.requiredDays}</div></div>
+        <div class="stat"><div class="label">WFH</div><div class="value" style="color:${TYPE_MAP.wfh.color}">${s.wfh}</div></div>
+        <div class="stat"><div class="label">مأمورية</div><div class="value" style="color:${TYPE_MAP.mission.color}">${s.mission}</div></div>
+        <div class="stat"><div class="label">إجازة / عطلة</div><div class="value" style="color:${TYPE_MAP.leave.color}">${s.holiday+s.leave+s.sick}</div></div>
+        <div class="stat"><div class="label">غياب</div><div class="value" style="color:${TYPE_MAP.absent.color}">${s.absent}</div></div>
+        <div class="stat"><div class="label">أيام فعلية محتسبة</div><div class="value">${fmt(s.actualDays)}</div></div>
+        <div class="stat"><div class="label">ساعات متوقعة</div><div class="value">${fmt(s.expectedHours)}</div><div class="sub">أيام فعلية × 8</div></div>
+        <div class="stat"><div class="label">ساعات فعلية</div><div class="value">${fmt(s.actualHours)}</div></div>
+        <div class="stat"><div class="label">سعر اليوم</div><div class="value">${fmtMoney(s.dailyRate)}</div></div>
+        <div class="stat"><div class="label">المرتب المستحق</div><div class="value">${fmtMoney(s.dueSalary)}</div></div>
+        <div class="stat"><div class="label">الفرق عن الأساسي (${fmtMoney(emp.salary)})</div><div class="value" style="color:${statusColor}">${s.diff>=0?'+':''}${fmtMoney(s.diff)}</div></div>
+        <div class="stat"><div class="label">الحالة</div><div class="value" style="color:${statusColor}">${s.status}</div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table class="log">
+          <thead><tr><th>التاريخ</th><th>اليوم</th><th>نوع اليوم</th><th>تفاصيل</th><th>الساعات</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('mainContent').innerHTML = main2;
+  wireLogEvents(emp);
+}
+
+function wireLogEvents(emp){
+  document.querySelectorAll('.type-select').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const ds = sel.dataset.ds;
+      const key = attKey(emp.id, ds);
+      const cur = state.attendance[key] || {};
+      state.attendance[key] = { ...cur, type: sel.value };
+      queueSave();
+      renderEmployeeLog();
+    });
+  });
+  document.querySelectorAll('[data-field]').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const ds = inp.dataset.ds, field = inp.dataset.field;
+      const key = attKey(emp.id, ds);
+      const cur = state.attendance[key] || {type:'present'};
+      state.attendance[key] = { ...cur, [field]: inp.value };
+      queueSave();
+      renderEmployeeLog();
+    });
+  });
+  document.querySelectorAll('[data-work-anyway]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const ds = btn.dataset.workAnyway;
+      state.attendance[attKey(emp.id,ds)] = { type:'present' };
+      queueSave();
+      renderEmployeeLog();
+    });
+  });
+  document.querySelectorAll('[data-revert-weekend]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const ds = btn.dataset.revertWeekend;
+      delete state.attendance[attKey(emp.id,ds)];
+      queueSave();
+      renderEmployeeLog();
+    });
+  });
+  const settingsBtn = document.getElementById('empSettingsBtn');
+  const panel = document.getElementById('empSettingsPanel');
+  if(settingsBtn){
+    settingsBtn.addEventListener('click', ()=>{
+      panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+    });
+  }
+  const saveBtn = document.getElementById('saveEmpSettings');
+  if(saveBtn){
+    saveBtn.addEventListener('click', ()=>{
+      const salary = Number(document.getElementById('editSalary').value)||0;
+      const join = document.getElementById('editJoin').value;
+      const offDays = Array.from(document.querySelectorAll('[data-wd]:checked')).map(c=>Number(c.dataset.wd));
+      const idx = state.employees.findIndex(x=>x.id===emp.id);
+      state.employees[idx] = { ...emp, salary, joinDate: join, offDays };
+      queueSave();
+      render();
+    });
+  }
+}
+
+/* ============================================================
+   Render: Main — Month summary & payroll
+   ============================================================ */
+function renderSummary(){
+  const rowsData = state.employees.map(emp=>({
+    emp, s: computeSummary(emp, state.attendance, state.year, state.month)
+  }));
+
+  const cols = [
+    ['requiredDays','مطلوبة'], ['wfh','WFH'], ['mission','مأمورية'], ['holiday','عطلة'],
+    ['leave','إجازة'], ['sick','مرضي'], ['absent','غياب'], ['actualDays','فعلية'],
+    ['expectedHours','س. متوقعة'], ['actualHours','س. فعلية'], ['varHours','فرق الساعات'],
+  ];
+
+  const reportRows = rowsData.map(({emp,s})=>`
+    <tr>
+      <td>${escapeHtml(emp.name)}</td>
+      ${cols.map(([k])=>`<td class="mono">${fmt(s[k], k==='actualDays'?1:1)}</td>`).join('')}
+    </tr>`).join('');
+
+  const payRows = rowsData.map(({emp,s})=>{
+    const cls = s.status==='له' ? 'status-good' : (s.status==='عليه' ? 'status-bad' : 'status-eq');
+    return `<tr>
+      <td>${escapeHtml(emp.name)}</td>
+      <td class="mono">${fmtMoney(s.dailyRate)}</td>
+      <td class="mono">${fmtMoney(emp.salary)}</td>
+      <td class="mono" style="font-weight:800;">${fmtMoney(s.dueSalary)}</td>
+      <td class="mono" style="font-weight:800;">${s.diff>=0?'+':''}${fmtMoney(s.diff)}</td>
+      <td><span class="status-tag ${cls}">${s.status}</span></td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+    <div class="card">
+      <h2>ملخص ${MONTH_AR[state.month-1]} ${state.year}</h2>
+      <p class="subtitle">كل الأرقام هنا محسوبة تلقائيًا من سجل الحضور اليومي لكل موظف — مفيش رقم متسجل يدوي منفصل ممكن ينسى تحديثه.</p>
+      <div class="table-wrap">
+        <table class="report">
+          <thead><tr><th>الموظف</th>${cols.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead>
+          <tbody>${reportRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>المرتبات — الأساسي مقابل المستحق</h2>
+      <div class="table-wrap">
+        <table class="report">
+          <thead><tr><th>الموظف</th><th>سعر اليوم</th><th>المرتب الأساسي</th><th>المرتب المستحق</th><th>الفرق</th><th>الحالة</th></tr></thead>
+          <tbody>${payRows}</tbody>
+        </table>
+      </div>
+      <div class="chart-wrap"><canvas id="salaryChart"></canvas></div>
+    </div>
+    <div class="info-box">
+      <span>ℹ️</span>
+      <span>قاعدة الحساب: <b>الأيام الفعلية = الأيام المطلوبة − الغياب + (عدد أيام المأمورية × 0.5)</b>. كل الأنواع التانية (WFH، عطلة رسمية، إجازة معتمدة، إجازة مرضية) بتتحسب يوم شغل كامل من غير أي خصم.</span>
+    </div>
+  `;
+  document.getElementById('mainContent').innerHTML = html;
+
+  const ctx = document.getElementById('salaryChart');
+  if(barChart) barChart.destroy();
+  barChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: rowsData.map(r=>r.emp.name),
+      datasets:[
+        { label:'المرتب الأساسي', data: rowsData.map(r=>r.emp.salary), backgroundColor:'#B7AF98', borderRadius:4 },
+        { label:'المرتب المستحق', data: rowsData.map(r=>+r.s.dueSalary.toFixed(2)), backgroundColor:'#16302B', borderRadius:4 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', rtl:true, labels:{font:{family:'Tahoma'}} } },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+}
+
+/* ============================================================
+   Master render
+   ============================================================ */
+function render(){
+  renderTopControls();
+  renderSidebar();
+  if(state.view==='summary') renderSummary();
+  else renderEmployeeLog();
+}
+
+/* ============================================================
+   Modals: Add employee / Backup / Bulk holiday
+   ============================================================ */
+function openAddEmployeeModal(){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-bg" id="addModalBg">
+      <div class="modal">
+        <h3>إضافة موظف جديد</h3>
+        <div class="field"><label>الاسم</label><input type="text" id="newName" placeholder="اسم الموظف"></div>
+        <div class="field"><label>المرتب الأساسي الشهري</label><input type="number" id="newSalary" value="10000"></div>
+        <div class="field">
+          <label>أيام الإجازة الأسبوعية</label>
+          <div class="weekday-chips">
+            ${WEEKDAY_AR.map((n,i)=>`<label class="chip"><input type="checkbox" data-newwd="${i}" ${i===5?'checked':''}>${n}</label>`).join('')}
+          </div>
+        </div>
+        <div class="field"><label>تاريخ الالتحاق (اختياري)</label><input type="date" id="newJoin"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="cancelAdd">إلغاء</button>
+          <button class="btn btn-dark" id="confirmAdd">حفظ</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('addModalBg').addEventListener('click', e=>{ if(e.target.id==='addModalBg') root.innerHTML=''; });
+  document.getElementById('cancelAdd').onclick = ()=> root.innerHTML='';
+  document.getElementById('confirmAdd').onclick = ()=>{
+    const name = document.getElementById('newName').value.trim();
+    if(!name){ alert('اكتب اسم الموظف'); return; }
+    const salary = Number(document.getElementById('newSalary').value)||0;
+    const offDays = Array.from(document.querySelectorAll('[data-newwd]:checked')).map(c=>Number(c.dataset.newwd));
+    const joinDate = document.getElementById('newJoin').value;
+    const id = name.trim().toLowerCase().replace(/\s+/g,'_') + '_' + Math.random().toString(36).slice(2,6);
+    state.employees.push({ id, name, salary, offDays, joinDate });
+    state.selectedId = id;
+    state.view = 'log';
+    queueSave();
+    root.innerHTML = '';
+    render();
+  };
+}
+
+function openBackupModal(){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-bg" id="bkModalBg">
+      <div class="modal">
+        <h3>نسخة احتياطية</h3>
+        <p class="hint" style="margin-bottom:12px;">صدّر كل بيانات النظام كملف JSON للحفظ، أو استورد ملف سبق تصديره لاسترجاع البيانات.</p>
+        <div class="modal-actions" style="justify-content:space-between;">
+          <button class="btn btn-outline" id="closeBk">إغلاق</button>
+          <div style="display:flex;gap:8px;">
+            <label class="btn btn-outline" style="cursor:pointer;">
+              استيراد
+              <input type="file" id="importFile" accept="application/json" style="display:none;">
+            </label>
+            <button class="btn btn-dark" id="exportJson">تصدير</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('bkModalBg').addEventListener('click', e=>{ if(e.target.id==='bkModalBg') root.innerHTML=''; });
+  document.getElementById('closeBk').onclick = ()=> root.innerHTML='';
+  document.getElementById('exportJson').onclick = ()=>{
+    const data = JSON.stringify({employees:state.employees, attendance:state.attendance}, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'attendance_backup.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  document.getElementById('importFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        if(data.employees) state.employees = data.employees;
+        if(data.attendance) state.attendance = data.attendance;
+        state.selectedId = state.employees[0]?.id || null;
+        queueSave();
+        root.innerHTML = '';
+        render();
+        showToast('تم الاستيراد ✓');
+      }catch(err){ alert('ملف غير صالح'); }
+    };
+    reader.readAsText(file);
+  });
+}
+
+function openBulkHolidayModal(){
+  const root = document.getElementById('modalRoot');
+  const defaultDate = dateStr(state.year, state.month, 1);
+  root.innerHTML = `
+    <div class="modal-bg" id="hoModalBg">
+      <div class="modal">
+        <h3>تسجيل عطلة رسمية لكل الموظفين</h3>
+        <div class="field"><label>التاريخ</label><input type="date" id="holDate" value="${defaultDate}"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="cancelHol">إلغاء</button>
+          <button class="btn btn-dark" id="confirmHol">تسجيل</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('hoModalBg').addEventListener('click', e=>{ if(e.target.id==='hoModalBg') root.innerHTML=''; });
+  document.getElementById('cancelHol').onclick = ()=> root.innerHTML='';
+  document.getElementById('confirmHol').onclick = ()=>{
+    const ds = document.getElementById('holDate').value;
+    if(!ds) return;
+    state.employees.forEach(emp=>{
+      state.attendance[attKey(emp.id, ds)] = { type:'holiday' };
+    });
+    queueSave();
+    root.innerHTML = '';
+    render();
+    showToast('اتسجلت العطلة لكل الموظفين ✓');
+  };
+}
+
+/* ============================================================
+   تصدير CSV
+   ============================================================ */
+function exportCsv(){
+  const headers = ['الموظف','أيام مطلوبة','WFH','مأمورية','عطلة رسمية','إجازة معتمدة','مرضي','غياب',
+    'أيام فعلية','ساعات متوقعة','ساعات فعلية','فرق الساعات','سعر اليوم','المرتب الأساسي','المرتب المستحق','الفرق','الحالة'];
+  const rows = state.employees.map(emp=>{
+    const s = computeSummary(emp, state.attendance, state.year, state.month);
+    return [emp.name, s.requiredDays, s.wfh, s.mission, s.holiday, s.leave, s.sick, s.absent,
+      s.actualDays, s.expectedHours, s.actualHours, s.varHours, s.dailyRate.toFixed(2), emp.salary,
+      s.dueSalary.toFixed(2), s.diff.toFixed(2), s.status];
+  });
+  const csv = [headers, ...rows].map(r=>r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `attendance_${state.year}_${pad2(state.month)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   استيراد ملف البصمة الشهري (Excel)
+   ============================================================ */
+const TYPE_TEXT_RULES = [
+  { re:/wfh|منزل|home/i,            key:'wfh' },
+  { re:/mission|مأمور/i,            key:'mission' },
+  { re:/public|holiday|عطل/i,       key:'holiday' },
+  { re:/sick|مرض/i,                 key:'sick' },
+  { re:/approved|leave|اجاز|إجاز/i, key:'leave' },
+  { re:/absent|غياب/i,              key:'absent' },
+  { re:/weekend|اسبوع|أسبوع/i,      key:null }, // نص صريح "إجازة أسبوعية" -> سيبها بلا تسجيل (تتحسب حسب إعداد الموظف)
+];
+function guessTypeFromText(raw){
+  const s = String(raw||'').trim();
+  if(!s) return undefined; // فاضي = مفيش معلومة عن النوع (هيتحدد من وجود أوقات الدخول/الخروج)
+  for(const rule of TYPE_TEXT_RULES){ if(rule.re.test(s)) return rule.key; }
+  return undefined;
+}
+function excelCellToHHMM(v){
+  if(v==null || v==='') return '';
+  if(v instanceof Date && !isNaN(v)){
+    return `${String(v.getHours()).padStart(2,'0')}:${String(v.getMinutes()).padStart(2,'0')}`;
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,2}):(\d{2})/);
+  if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
+  const num = Number(s);
+  if(!Number.isNaN(num) && num>=0 && num<2){
+    const totalMin = Math.round(num*24*60);
+    return `${String(Math.floor(totalMin/60)).padStart(2,'0')}:${String(totalMin%60).padStart(2,'0')}`;
+  }
+  return '';
+}
+function parseDateCell(v){
+  if(v instanceof Date && !isNaN(v)) return v;
+  const s = String(v||'').trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]));
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  const asNum = Number(s);
+  if(!Number.isNaN(asNum) && asNum>20000 && asNum<80000){
+    // Excel serial date fallback (days since 1899-12-30)
+    const epoch = new Date(1899,11,30);
+    return new Date(epoch.getTime() + asNum*86400000);
+  }
+  return null;
+}
+
+function openImportMappingModal(wb){
+  const sheetNames = wb.SheetNames.filter(n=>!/^summary$/i.test(n.trim()));
+  if(!sheetNames.length){ alert('مفيش شيتات موظفين في الملف ده (كل الشيتات اسمها Summary).'); return; }
+  const firstSheet = wb.Sheets[sheetNames[0]];
+  const previewRows = XLSX.utils.sheet_to_json(firstSheet, {header:1, raw:false, defval:''}).slice(0,6);
+
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-bg" id="impModalBg">
+      <div class="modal" style="max-width:640px;max-height:88vh;overflow:auto;">
+        <h3>استيراد ملف البصمة الشهري</h3>
+        <p class="hint" style="margin-bottom:10px;">ده أول شيت في ملفك (<b>${escapeHtml(sheetNames[0])}</b>) — حدد أرقام الأعمدة (بتبدأ من صفر) تحت الجدول لحد ما تظبط، وهستخدم نفس الترتيب لباقي شيتات الموظفين.</p>
+        <div class="table-wrap" style="max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-bottom:12px;">
+          <table style="font-size:11px;">
+            <tbody>
+              ${previewRows.map(r=>`<tr>${r.map(c=>`<td style="padding:3px 6px;border:1px solid var(--line-2);white-space:nowrap;">${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field"><label>عمود التاريخ</label><input type="number" min="0" id="colDate" value="0"></div>
+          <div class="field"><label>عمود الدخول (اختياري)</label><input type="number" min="0" id="colIn" value="3"></div>
+          <div class="field"><label>عمود الخروج (اختياري)</label><input type="number" min="0" id="colOut" value="4"></div>
+          <div class="field"><label>عمود نوع اليوم (اختياري)</label><input type="number" min="0" id="colType" value="6"></div>
+        </div>
+        <div class="hint" style="margin-bottom:12px;">لو الجدول مش شبه ملفك المعتاد، غيّر الأرقام فوق (0 = أول عمود، 1 = التاني، وهكذا) لحد ما التاريخ والأوقات يبانوا صح.</div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11.5px;font-weight:700;color:#666;">ربط شيتات الملف بموظفين النظام</label>
+        </div>
+        <div id="sheetMapList" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto;margin-bottom:6px;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="cancelImp">إلغاء</button>
+          <button class="btn btn-dark" id="confirmImp">استيراد</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('sheetMapList').innerHTML = sheetNames.map(sn=>{
+    const guess = state.employees.find(e=>e.name.trim().toLowerCase()===sn.trim().toLowerCase());
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;">
+      <span class="mono">${escapeHtml(sn)}</span>
+      <select data-sheet="${escapeHtml(sn)}" style="border:1px solid var(--line);border-radius:5px;padding:3px 6px;">
+        <option value="">— تجاهل —</option>
+        ${state.employees.map(e=>`<option value="${e.id}" ${guess&&guess.id===e.id?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}
+        <option value="__new__" ${!guess?'':''}>+ إنشاء موظف جديد بنفس اسم الشيت</option>
+      </select>
+    </div>`;
+  }).join('');
+
+  document.getElementById('impModalBg').addEventListener('click', e=>{ if(e.target.id==='impModalBg') root.innerHTML=''; });
+  document.getElementById('cancelImp').onclick = ()=> root.innerHTML='';
+  document.getElementById('confirmImp').onclick = ()=> runImport(wb, sheetNames);
+}
+
+function runImport(wb, sheetNames){
+  const colDate = Number(document.getElementById('colDate').value);
+  const colIn = Number(document.getElementById('colIn').value);
+  const colOut = Number(document.getElementById('colOut').value);
+  const colType = Number(document.getElementById('colType').value);
+  const mapSelects = document.querySelectorAll('#sheetMapList select');
+
+  let importedDays = 0, importedEmployees = 0;
+  const newEmployeesCreated = [];
+  let detectedYear = null, detectedMonth = null;
+
+  mapSelects.forEach(sel=>{
+    const sheetName = sel.dataset.sheet;
+    let targetId = sel.value;
+    if(!targetId) return;
+
+    if(targetId==='__new__'){
+      const id = sheetName.trim().toLowerCase().replace(/\s+/g,'_') + '_' + Math.random().toString(36).slice(2,5);
+      state.employees.push({ id, name: sheetName.trim(), salary:10000, offDays:[5], joinDate:'' });
+      targetId = id;
+      newEmployeesCreated.push(sheetName.trim());
+    }
+
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+    let daysForThisEmp = 0;
+
+    rows.forEach(row=>{
+      const d = parseDateCell(row[colDate]);
+      if(!d) return;
+      if(detectedYear==null){ detectedYear = d.getFullYear(); detectedMonth = d.getMonth()+1; }
+      const ds = dateStr(d.getFullYear(), d.getMonth()+1, d.getDate());
+
+      const typeRaw = !Number.isNaN(colType) ? row[colType] : '';
+      const guessedType = guessTypeFromText(typeRaw);
+      const inHM = !Number.isNaN(colIn) ? excelCellToHHMM(row[colIn]) : '';
+      const outHM = !Number.isNaN(colOut) ? excelCellToHHMM(row[colOut]) : '';
+
+      if(guessedType===null) return; // نص صريح "إجازة أسبوعية" -> سيبها افتراضية
+      if(guessedType===undefined && !inHM && !outHM) return; // مفيش أي معلومة مفيدة -> تجاهل
+
+      const rec = {};
+      if(guessedType){
+        rec.type = guessedType;
+      } else {
+        rec.type = 'present';
+        if(inHM) rec.checkIn = inHM;
+        if(outHM) rec.checkOut = outHM;
+      }
+      state.attendance[attKey(targetId, ds)] = rec;
+      daysForThisEmp++; importedDays++;
+    });
+    if(daysForThisEmp>0) importedEmployees++;
+  });
+
+  document.getElementById('modalRoot').innerHTML = '';
+  if(detectedYear){ state.year = detectedYear; state.month = detectedMonth; }
+  queueSave();
+  render();
+  showToast(`تم استيراد ${importedDays} يوم لـ ${importedEmployees} موظف${newEmployeesCreated.length ? ' (جديد: '+newEmployeesCreated.join('، ')+')' : ''} ✓`);
+}
+
+/* ============================================================
+   ربط الأحداث الثابتة وبدء التشغيل
+   ============================================================ */
+document.getElementById('addEmpBtn').addEventListener('click', openAddEmployeeModal);
+document.getElementById('csvBtn').addEventListener('click', exportCsv);
+document.getElementById('backupBtn').addEventListener('click', openBackupModal);
+document.getElementById('holidayBtn').addEventListener('click', openBulkHolidayModal);
+document.getElementById('importFingerprintFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+    openImportMappingModal(wb);
+  }catch(err){
+    alert('تعذّر قراءة الملف. تأكد إنه ملف إكسل صالح (.xlsx).');
+  }
+});
+document.addEventListener('click', (e)=>{
+  const panel = document.getElementById('empSettingsPanel');
+  const btn = document.getElementById('empSettingsBtn');
+  if(panel && btn && !panel.contains(e.target) && e.target!==btn){ panel.style.display='none'; }
+});
+
+loadState();
+</script>
+</body>
+</html>
